@@ -18,7 +18,7 @@ const MockResult = types
   })
   .views((self) => ({
     get mainValue() {
-      return self.value?.labels ?? self.value?.textarea ?? null;
+      return self.value?.labels ?? self.value?.choices ?? self.value?.number ?? self.value?.textarea ?? null;
     },
     get hasValue() {
       const v = self.mainValue;

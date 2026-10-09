@@ -14,7 +14,6 @@ label_studio/**/*.pyc
 
 # FRONTEND
 !web
-!.git
 # Re-ignore node_modules and nx cache
 **/node_modules
 **/.nx

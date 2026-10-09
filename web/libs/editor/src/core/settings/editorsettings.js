@@ -34,7 +34,7 @@ export default {
     },
     description: "Show labels inside the regions",
     onChangeEvent: "toggleShowLabels",
-    defaultValue: false,
+    defaultValue: true,
   },
   continuousLabeling: {
     newUI: {

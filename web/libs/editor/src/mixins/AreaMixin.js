@@ -91,17 +91,54 @@ export const AreaMixinBase = types
     },
 
     // used only in labels on regions for Image and Video tags
+    // format: "<label><index>: <value1>-<value2>", e.g. "player1: 主队-2"
     getLabelText(joinstr) {
       const index = self.region_index;
       const label = self.labeling;
       const text = self.texting?.mainValue?.[0]?.replace(/\n\r|\n/, " ");
       const labelNames = label?.getSelectedString(joinstr);
-      const labelText = [];
+      // show values of the other per-region controls (choices, number, etc.) next to the label;
+      // visibility follows the "Show region labels" setting (the whole chip is gated by it),
+      // and the set of controls is configurable via `showAttributes` on the labeling control:
+      //   "all" (default) | "none" | comma-separated control names, e.g. "team,jersey_number"
+      //   with an explicit list every control keeps its position in display order,
+      //   and controls without a value are rendered as empty slots (e.g. "player1: -2")
+      const showAttributes = (self.tag?.showattributes ?? "all").trim().toLowerCase();
+      const wanted =
+        ["all", "none"].includes(showAttributes) ? null : showAttributes.split(",").map((s) => s.trim()).filter(Boolean);
+      const values = [];
 
-      if (index) labelText.push(String(index));
-      if (labelNames) labelText.push(labelNames);
-      if (text) labelText.push(text);
-      return labelText.join(": ");
+      const extract = (r) => {
+        if (!r || r === label || r === self.texting) return "";
+        if (r.from_name?.isLabeling || r.type === "textarea" || !r.hasValue) return "";
+        const value = r.mainValue;
+
+        return Array.isArray(value)
+          ? value.filter((v) => typeof v === "string" || typeof v === "number").join(",")
+          : typeof value === "string" || typeof value === "number"
+            ? String(value)
+            : "";
+      };
+
+      if (showAttributes !== "none") {
+        if (wanted) {
+          // strict positional format: keep empty slots for controls without a value
+          wanted.forEach((name) => values.push(extract(self.results.find((r) => r.from_name?.name === name))));
+        } else {
+          self.results.forEach((r) => {
+            const str = extract(r);
+
+            if (str) values.push(str);
+          });
+        }
+      }
+
+      if (text && !wanted) values.unshift(text);
+      const head = `${labelNames ?? ""}${index ? String(index) : ""}`;
+
+      if (!values.length) return head;
+      if (!head) return values.join("-");
+      return `${head}: ${values.join("-")}`;
     },
 
     get parent() {

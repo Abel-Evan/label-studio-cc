@@ -194,7 +194,6 @@ const LabelOnRect = observer(({ item, color, strokewidth }) => {
       zoomScale={item.parent.zoomScale}
       rotation={item.rotation}
       color={color}
-      maxWidth={obj.internalToCanvasX(item.width) + strokewidth}
       adjacent
       onClickLabel={item.onClickLabel}
     />

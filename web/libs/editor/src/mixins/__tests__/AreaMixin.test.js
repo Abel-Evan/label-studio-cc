@@ -375,7 +375,7 @@ describe("AreaMixin", () => {
         type: "textarea",
         value: { textarea: ["note"] },
       });
-      expect(area.getLabelText(" | ")).toBe("2: L1: note");
+      expect(area.getLabelText(" | ")).toBe("L12: note");
     });
 
     it("omits index when region_index null", () => {
@@ -387,6 +387,134 @@ describe("AreaMixin", () => {
         value: { labels: ["L1"] },
       });
       expect(area.getLabelText(" ")).toBe("L1");
+    });
+
+    it("appends values of other per-region controls (choices, number) by default", () => {
+      const { area } = createStore();
+      area.addResult({
+        from_name: { isLabeling: true },
+        to_name: {},
+        type: "rectanglelabels",
+        value: { labels: ["player"] },
+      });
+      area.addResult({
+        from_name: { name: "team" },
+        to_name: {},
+        type: "choices",
+        value: { choices: ["客队"] },
+      });
+      area.addResult({
+        from_name: { name: "jersey_number" },
+        to_name: {},
+        type: "number",
+        value: { number: 7 },
+      });
+      expect(area.getLabelText(":")).toBe("player: 客队-7");
+    });
+
+    it("filters per-region controls by showAttributes list", () => {
+      const { area } = createStore();
+      area.addResult({
+        from_name: { isLabeling: true, showattributes: "team, jersey_number" },
+        to_name: {},
+        type: "rectanglelabels",
+        value: { labels: ["player"] },
+      });
+      area.addResult({
+        from_name: { name: "team" },
+        to_name: {},
+        type: "choices",
+        value: { choices: ["主队"] },
+      });
+      area.addResult({
+        from_name: { name: "jersey_number" },
+        to_name: {},
+        type: "number",
+        value: { number: 10 },
+      });
+      area.addResult({
+        from_name: { name: "frame_id" },
+        to_name: {},
+        type: "number",
+        value: { number: 123 },
+      });
+      expect(area.getLabelText(":")).toBe("player: 主队-10");
+    });
+
+    it("hides per-region control values when showAttributes is none", () => {
+      const { area } = createStore();
+      area.addResult({
+        from_name: { isLabeling: true, showattributes: "none" },
+        to_name: {},
+        type: "rectanglelabels",
+        value: { labels: ["player"] },
+      });
+      area.addResult({
+        from_name: { name: "team" },
+        to_name: {},
+        type: "choices",
+        value: { choices: ["客队"] },
+      });
+      expect(area.getLabelText(":")).toBe("player");
+    });
+
+    it("skips controls with empty values", () => {
+      const { area } = createStore();
+      area.addResult({
+        from_name: { isLabeling: true },
+        to_name: {},
+        type: "rectanglelabels",
+        value: { labels: ["L1"] },
+      });
+      area.addResult({
+        from_name: { name: "team" },
+        to_name: {},
+        type: "choices",
+        value: { choices: [] },
+      });
+      expect(area.getLabelText(":")).toBe("L1");
+    });
+
+    it("renders the strict format player1：主队-2 with index and showAttributes list", () => {
+      const { area, annotation } = createStore();
+      annotation.regionStore.regionIndexMap[area.id] = 1;
+      area.addResult({
+        from_name: { isLabeling: true, showattributes: "team,jersey_number" },
+        to_name: {},
+        type: "rectanglelabels",
+        value: { labels: ["player"] },
+      });
+      area.addResult({
+        from_name: { name: "team" },
+        to_name: {},
+        type: "choices",
+        value: { choices: ["主队"] },
+      });
+      area.addResult({
+        from_name: { name: "jersey_number" },
+        to_name: {},
+        type: "number",
+        value: { number: 2 },
+      });
+      expect(area.getLabelText(",")).toBe("player1: 主队-2");
+    });
+
+    it("keeps empty slots for controls without values in showAttributes list", () => {
+      const { area } = createStore();
+      area.addResult({
+        from_name: { isLabeling: true, showattributes: "team,jersey_number" },
+        to_name: {},
+        type: "rectanglelabels",
+        value: { labels: ["player"] },
+      });
+      area.addResult({
+        from_name: { name: "jersey_number" },
+        to_name: {},
+        type: "number",
+        value: { number: 2 },
+      });
+      // team has no value -> empty slot before the dash
+      expect(area.getLabelText(",")).toBe("player: -2");
     });
   });
 

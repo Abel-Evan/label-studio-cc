@@ -41,6 +41,7 @@ import { InteractivePromptMixin } from "../../mixins/InteractivePromptMixin";
  * @param {number} [strokeWidth=1]   - Width of stroke
  * @param {boolean} [canRotate=true] - Show or hide rotation control. Note that the anchor point in the results is different than the anchor point used when rotating with the rotation tool. For more information, see [Rotation](/templates/image_bbox#Rotation).
  * @param {pixel|none} [snap=none]   - Snap rectangle to image pixels
+ * @param {string} [showAttributes=all] - Which per-region control values (choices, number, etc.) to display in the region label, joined by "-": `all`, `none`, or comma-separated control names in display order, e.g. `team,jersey_number`
  */
 
 const Validation = types.model({
@@ -50,6 +51,7 @@ const Validation = types.model({
 const ModelAttrs = types.model("RectangleLabelsModel", {
   pid: types.optional(types.string, guidGenerator),
   type: "rectanglelabels",
+  showattributes: types.maybeNull(types.string),
   children: Types.unionArray(["label", "header", "view", "hypertext"]),
 });
 
