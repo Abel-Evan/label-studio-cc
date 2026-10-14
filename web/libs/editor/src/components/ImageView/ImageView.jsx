@@ -14,6 +14,7 @@ import Konva from "konva";
 import { LoadingOutlined } from "@ant-design/icons";
 import { Toolbar } from "../Toolbar/Toolbar";
 import { ImageViewProvider } from "./ImageViewContext";
+import { CanvasCropTooltipHost } from "./CanvasCropTooltip";
 import { InteractiveOverlayHost } from "../../ml-interactive/InteractiveOverlayHost";
 import { Hotkey } from "../../core/Hotkey";
 import ResizeObserver from "../../utils/resize-observer";
@@ -1240,31 +1241,34 @@ const EntireStage = observer(
     };
 
     return (
-      <Stage
-        ref={(ref) => {
-          item.setStageRef(ref);
-        }}
-        className={[styles["image-element"], ...imagePositionClassnames].join(" ")}
-        width={size.width}
-        height={size.height}
-        scaleX={item.zoomScale}
-        scaleY={item.zoomScale}
-        x={position.x}
-        y={position.y}
-        offsetX={item.stageTranslate.x}
-        offsetY={item.stageTranslate.y}
-        rotation={item.rotation}
-        onClick={onClick}
-        onMouseEnter={onMouseEnter}
-        onMouseLeave={onMouseLeave}
-        onDragMove={onDragMove}
-        onMouseDown={onMouseDown}
-        onMouseMove={onMouseMove}
-        onMouseUp={onMouseUp}
-        onWheel={onWheel}
-      >
-        <StageContent item={item} store={store} state={state} crosshairRef={crosshairRef} />
-      </Stage>
+      <>
+        <Stage
+          ref={(ref) => {
+            item.setStageRef(ref);
+          }}
+          className={[styles["image-element"], ...imagePositionClassnames].join(" ")}
+          width={size.width}
+          height={size.height}
+          scaleX={item.zoomScale}
+          scaleY={item.zoomScale}
+          x={position.x}
+          y={position.y}
+          offsetX={item.stageTranslate.x}
+          offsetY={item.stageTranslate.y}
+          rotation={item.rotation}
+          onClick={onClick}
+          onMouseEnter={onMouseEnter}
+          onMouseLeave={onMouseLeave}
+          onDragMove={onDragMove}
+          onMouseDown={onMouseDown}
+          onMouseMove={onMouseMove}
+          onMouseUp={onMouseUp}
+          onWheel={onWheel}
+        >
+          <StageContent item={item} store={store} state={state} crosshairRef={crosshairRef} />
+        </Stage>
+        <CanvasCropTooltipHost />
+      </>
     );
   },
 );

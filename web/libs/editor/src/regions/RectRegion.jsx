@@ -3,6 +3,7 @@ import { getRoot, isAlive, types } from "mobx-state-tree";
 import { useContext } from "react";
 import { Rect } from "react-konva";
 import { ImageViewContext } from "../components/ImageView/ImageViewContext";
+import { setCanvasHover } from "../components/ImageView/CanvasCropTooltip";
 import { LabelOnRect } from "../components/ImageView/LabelOnRegion";
 import Constants from "../core/Constants";
 import { guidGenerator } from "../core/Helpers";
@@ -528,6 +529,10 @@ const HtxRectangleView = ({ item, setShapeRef }) => {
             item.setHighlight(false);
           }
           item.updateCursor();
+          setCanvasHover(null);
+        }}
+        onMouseMove={(e) => {
+          setCanvasHover({ region: item, x: e.evt.clientX, y: e.evt.clientY });
         }}
         onClick={(e) => {
           if (item.parent.getSkipInteractions()) return;

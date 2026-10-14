@@ -114,8 +114,21 @@ const Model = types
       },
 
       needsUpdate() {
-        if (self.result) self.number = self.result.mainValue;
-        else self.number = null;
+        if (self.result) {
+          let value = self.result.mainValue;
+
+          // results stored by a TextArea control keep the number under value.text,
+          // so fall back to parsing it when the control's own key is absent
+          if (value === undefined || value === null) {
+            const text = self.result.value?.text;
+            const parsed = Number(Array.isArray(text) ? text[0] : text);
+
+            value = Number.isNaN(parsed) ? null : parsed;
+          }
+          self.number = value;
+        } else {
+          self.number = null;
+        }
       },
 
       beforeSend() {

@@ -108,22 +108,43 @@ export const AreaMixinBase = types
         ["all", "none"].includes(showAttributes) ? null : showAttributes.split(",").map((s) => s.trim()).filter(Boolean);
       const values = [];
 
-      const extract = (r) => {
-        if (!r || r === label || r === self.texting) return "";
-        if (r.from_name?.isLabeling || r.type === "textarea" || !r.hasValue) return "";
-        const value = r.mainValue;
+      const extract = (r, strict) => {
+        if (!r) return "";
+        // in strict mode (explicit showAttributes list) the user asked for this control
+        // by name, so don't skip textarea-typed results or the texting duplicate
+        if (!strict && (r === label || r === self.texting)) return "";
+        if (r.from_name?.isLabeling || (!strict && r.type === "textarea")) return "";
+        // prefer the control's own value key; fall back to `value.text` so results stored
+        // by a TextArea (value.text) still render when the control type later changed
+        let value = r.mainValue;
+
+        if (value === undefined || value === null) value = r.value?.text;
+        if (value === undefined || value === null || (Array.isArray(value) && value.length === 0)) return "";
+        // map a stored choice value to its display alias (annotations made before an alias
+        // was configured store the raw value, which would otherwise be shown as-is)
+        const mapChoice = (v) => {
+          const children = r.from_name?.tiedChildren;
+
+          if (!children?.length) return v;
+          const choice = children.find((c) => c.resultValue === v || c._value === v);
+
+          return choice ? (choice.alias ?? choice.value ?? v) : v;
+        };
 
         return Array.isArray(value)
-          ? value.filter((v) => typeof v === "string" || typeof v === "number").join(",")
+          ? value.filter((v) => typeof v === "string" || typeof v === "number").map(mapChoice).join(",")
           : typeof value === "string" || typeof value === "number"
-            ? String(value)
+            ? String(mapChoice(value))
             : "";
       };
-
+      console.log('showAttributes', showAttributes, wanted)
       if (showAttributes !== "none") {
         if (wanted) {
           // strict positional format: keep empty slots for controls without a value
-          wanted.forEach((name) => values.push(extract(self.results.find((r) => r.from_name?.name === name))));
+          wanted.forEach((name) =>
+            values.push(extract(self.results.find((r) => r.from_name?.name === name), true)),
+          );
+          console.log("values", values)
         } else {
           self.results.forEach((r) => {
             const str = extract(r);

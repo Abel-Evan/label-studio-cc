@@ -8,7 +8,7 @@ import { JsonViewer, Typography } from "@humansignal/ui";
 const TextResult: FC<{ mainValue: string[] }> = observer(({ mainValue }) => {
   return (
     <div className="flex flex-col items-start gap-tighter">
-      {mainValue.map((value: string, i: number) => (
+      {(mainValue ?? []).map((value: string, i: number) => (
         <mark
           key={`${value}-${i}`}
           className="bg-primary-background px-tighter py-tightest rounded-sm text-neutral-content"
@@ -26,7 +26,7 @@ const ChoicesResult: FC<{ mainValue: string[] }> = observer(({ mainValue }) => {
   return (
     <mark className="bg-primary-background px-tighter py-tightest rounded-sm">
       <Typography as="span" size="small" className="text-neutral-content">
-        {mainValue.join(", ")}
+        {(mainValue ?? []).join(", ")}
       </Typography>
     </mark>
   );
@@ -94,7 +94,7 @@ export const ResultItem: FC<{ result: any }> = observer(({ result }) => {
         <div className={cn("region-meta").elem("result").toClassName()}>
           <Typography size="small">Taxonomy: </Typography>
           <div className={cn("region-meta").elem("value").toClassName()}>
-            <ChoicesResult mainValue={mainValue.map((v: string[]) => v.join("/"))} />
+            <ChoicesResult mainValue={(mainValue ?? []).map((v: string[]) => v.join("/"))} />
           </div>
         </div>
       );
@@ -180,7 +180,7 @@ export const RegionDetailsMeta: FC<RegionDetailsMetaProps> = observer(
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                saveMeta(e.target.value);
+                saveMeta(e.currentTarget.value);
                 cancelEditMode?.();
               }
             }}
