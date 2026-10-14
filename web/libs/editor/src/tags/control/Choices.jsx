@@ -220,7 +220,9 @@ const Model = types
               if (value.length !== choice.resultValue.length) return false;
               return value.every?.((val, idx) => val === choice.resultValue?.[idx]);
             }
-            return value === choice.resultValue;
+            // also match the raw value so results stored before an alias was configured
+            // still select the right choice after aliases are added to the template
+            return value === choice.resultValue || value === choice._value;
           });
         }
 

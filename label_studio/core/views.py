@@ -15,6 +15,7 @@ from core.utils.common import collect_versions
 from core.utils.io import find_file
 from django.conf import settings
 from django.contrib.auth import logout
+from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import redirect, render, reverse
 from django.views.decorators.csrf import csrf_exempt
@@ -216,3 +217,32 @@ def feature_flags(request):
 def collect_metrics(request):
     """Lightweight endpoint to collect usage metrics from the frontend only when COLLECT_ANALYTICS is enabled"""
     return HttpResponse(status=204)
+
+
+@login_required
+def canvas_image(request):
+    """Serve a local canvas image file (read-only) for the region hover tooltip.
+
+    The file must live under settings.CANVAS_IMAGE_ROOT; cropping is done client-side.
+    """
+    path = request.GET.get('path', '')
+    if not path:
+        return HttpResponse(status=400)
+
+    root = os.path.realpath(getattr(settings, 'CANVAS_IMAGE_ROOT', '/tmp/migu'))
+    real = os.path.realpath(path)
+    if not (real == root or real.startswith(root + os.sep)):
+        return HttpResponseForbidden()
+    if not os.path.isfile(real):
+        return HttpResponse(status=404)
+
+    ext = os.path.splitext(real)[1].lower()
+    content_type = {
+        '.bmp': 'image/bmp',
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+    }.get(ext, 'application/octet-stream')
+
+    with open(real, 'rb') as f:
+        return HttpResponse(f.read(), content_type=content_type)

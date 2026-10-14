@@ -516,6 +516,45 @@ describe("AreaMixin", () => {
       // team has no value -> empty slot before the dash
       expect(area.getLabelText(",")).toBe("player: -2");
     });
+
+    it("collects explicitly listed controls even when serialized as textarea", () => {
+      const { area } = createStore();
+      area.addResult({
+        from_name: { isLabeling: true, showattributes: "team,number" },
+        to_name: {},
+        type: "rectanglelabels",
+        value: { labels: ["player"] },
+      });
+      // a TextArea control named "number" serializes as type "textarea" with a text value
+      area.addResult({
+        from_name: { name: "number" },
+        to_name: {},
+        type: "textarea",
+        value: { textarea: ["3"] },
+      });
+      expect(area.getLabelText(",")).toBe("player: -3");
+    });
+
+    it("maps stored choice values to their alias in the label", () => {
+      const { area } = createStore();
+      area.addResult({
+        from_name: { isLabeling: true, showattributes: "team" },
+        to_name: {},
+        type: "rectanglelabels",
+        value: { labels: ["player"] },
+      });
+      // stored value "1" predates the alias config; display should use the alias
+      area.addResult({
+        from_name: {
+          name: "team",
+          tiedChildren: [{ resultValue: "主队", _value: "1", alias: "主队", value: "1" }],
+        },
+        to_name: {},
+        type: "choices",
+        value: { choices: ["1"] },
+      });
+      expect(area.getLabelText(",")).toBe("player: 主队");
+    });
   });
 
   describe("parent", () => {

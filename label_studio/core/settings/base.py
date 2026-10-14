@@ -1149,3 +1149,6 @@ MIGRATION_DEPENDENCY_RETRY_DELAY_SECONDS = int(get_env('MIGRATION_DEPENDENCY_RET
 
 # Cap how long a dependent job waits (delay * max retries ~= 24 hours at the defaults).
 MIGRATION_DEPENDENCY_MAX_RETRIES = int(get_env('MIGRATION_DEPENDENCY_MAX_RETRIES', 96))
+
+# Root directory the canvas-image hover-tooltip endpoint (core.views.canvas_image) is allowed to read from.
+CANVAS_IMAGE_ROOT = get_env('CANVAS_IMAGE_ROOT', '/tmp/migu')
