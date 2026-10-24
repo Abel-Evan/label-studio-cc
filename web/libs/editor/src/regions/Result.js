@@ -399,6 +399,12 @@ const Result = types
 
       if (isDefined(value[valueType])) {
         Object.assign(data.value, { [valueType]: value[valueType] });
+      } else if (isDefined(value.text)) {
+        // Legacy per-region values kept under `value.text` by a previous TextArea control
+        // (e.g. a Number whose result still has type "textarea"): `data.value` only carries the
+        // area geometry, so without this the stored value would be dropped on submit and the
+        // region would reload with an empty control (blank label value + empty input).
+        Object.assign(data.value, { text: value.text });
       }
 
       if (typeof score === "number") data.score = score;

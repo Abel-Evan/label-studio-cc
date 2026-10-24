@@ -1,4 +1,12 @@
-import { IconArrow, IconChevronLeft, IconEyeClosed, IconEyeOpened, IconSparks, IconWarning } from "@humansignal/icons";
+import {
+  IconArrow,
+  IconChevronLeft,
+  IconEyeClosed,
+  IconEyeOpened,
+  IconSparks,
+  IconTrash,
+  IconWarning,
+} from "@humansignal/icons";
 import { Tooltip } from "@humansignal/ui";
 import chroma from "chroma-js";
 import { inject, observer } from "mobx-react";
@@ -34,6 +42,7 @@ import { RegionControlButton } from "../Components/RegionControlButton";
 import "./TreeView.prefix.css";
 import type { EventDataNode, Key } from "rc-tree/es/interface";
 import ResizeObserver from "../../../utils/resize-observer";
+import { getRegionNumber, hasPerRegionNumber, isRegionNumberEmpty } from "../../../utils/perRegionNumber";
 import { RegionLabel } from "./RegionLabel";
 
 const { localStorage } = window;
@@ -423,6 +432,14 @@ const NodeIconComponent: FC<any> = observer(({ node }) => {
   return node ? <NodeIcon node={node} /> : null;
 });
 
+// Reactive per-region number badge. Rendered as its own observer so it re-renders when the
+// number result changes, even though the memoized RootTitle row does not.
+const RegionNumber: FC<{ item: any }> = observer(({ item }) => {
+  const text = isRegionNumberEmpty(item) ? "-" : String(getRegionNumber(item));
+
+  return <span className={cn("outliner-item").elem("number").toClassName()}>{text}</span>;
+});
+
 const RootTitle: FC<any> = observer(
   ({
     item, // can be undefined for group titles in Labels or Tools mode
@@ -454,12 +471,25 @@ const RootTitle: FC<any> = observer(
     const incomplete = item?.incomplete;
     const showControls = !isClassification && item?.hideable !== false;
 
+    // Jersey-number workflow extras: only when the config has a per-region Number control.
+    const showNumber = Boolean(isArea) && !isClassification && hasPerRegionNumber(item?.annotation);
+
+    const onDeleteRegion = useCallback(
+      (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        item?.deleteRegion?.();
+      },
+      [item],
+    );
+
     return (
       <div className={cn("outliner-item").mod({ incomplete, classification: isClassification }).toClassName()}>
         <div className={cn("outliner-item").elem("content").toClassName()}>
           {!props.isGroup && <div className={cn("outliner-item").elem("index").toClassName()}>{props.idx + 1}</div>}
           <div className={cn("outliner-item").elem("title").toClassName()}>
             {label}
+            {showNumber && <RegionNumber item={item} />}
             {item?.text && (
               <div className={cn("outliner-item").elem("text").toClassName()}>{item.text.replace(/\\n/g, "\n")}</div>
             )}
@@ -481,6 +511,18 @@ const RootTitle: FC<any> = observer(
               hasControls={hasControls && isArea}
               toggleCollapsed={toggleCollapsed}
             />
+          )}
+          {showNumber && !item?.isReadOnly?.() && (
+            <Tooltip title="Delete region">
+              <button
+                type="button"
+                aria-label="Delete region"
+                className={cn("outliner-item").elem("delete").toClassName()}
+                onClick={onDeleteRegion}
+              >
+                <IconTrash />
+              </button>
+            </Tooltip>
           )}
         </div>
 

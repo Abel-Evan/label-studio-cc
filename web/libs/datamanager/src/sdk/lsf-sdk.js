@@ -6,6 +6,7 @@ import {
   FF_UTC_950_FIREWALL,
 } from "@humansignal/core/lib/utils/feature-flags";
 import { isDefined } from "../utils/utils";
+import { History } from "../utils/history";
 import { Modal } from "../components/Common/Modal/Modal";
 import { CommentsSdk } from "./comments-sdk";
 import { errorHandlerAllowSpecialErrors } from "./special-errors";
@@ -897,6 +898,10 @@ export class LSFWrapper {
 
     const exitStream = this.shouldExitStream();
     const loadNext = exitStream ? false : this.shouldLoadNext();
+    // In the Data Manager labeling view (not label stream), jump to the next task in the left list
+    // once the submit succeeds. Falls back to the default same-task reload when there is no next task.
+    // Note: `datamanager.isExplorer` is true in this very labeling view, so it must NOT be used as a guard.
+    const goToNext = !exitStream && !this.labelStream && Boolean(this.getNextTaskInList());
     const result = await this.submitCurrentAnnotation(
       "submitAnnotation",
       async (taskID, body) => {
@@ -910,6 +915,7 @@ export class LSFWrapper {
       },
       false,
       loadNext,
+      goToNext,
     );
     const status = result?.$meta?.status;
 
@@ -968,12 +974,19 @@ export class LSFWrapper {
     }
 
     const isRejectedQueue = isDefined(task.default_selected_annotation);
+    // When the annotation already exists, the bottom "Submit" button routes here (updateAnnotation)
+    // instead of onSubmitAnnotation. Mirror the submit behavior: jump to the next task in the left list
+    // once the update succeeds, falling back to the default same-task reload when there is no next task.
+    const goToNext = !this.labelStream && Boolean(this.getNextTaskInList());
+    const movedToNext = goToNext && !isRejectedQueue && (await this.goToNextTask());
 
-    if (isRejectedQueue) {
-      // load next task if that one was updated task from rejected queue
-      await this.loadTask();
-    } else {
-      await this.loadTask(this.task.id, annotation.pk, true);
+    if (!movedToNext) {
+      if (isRejectedQueue) {
+        // load next task if that one was updated task from rejected queue
+        await this.loadTask();
+      } else {
+        await this.loadTask(this.task.id, annotation.pk, true);
+      }
     }
   };
 
@@ -1363,6 +1376,63 @@ export class LSFWrapper {
     }
   };
 
+  /**
+   * Returns the task shown right after the current one in the Data Manager left list — the order the
+   * user actually navigates by clicking — or null when there is none. We deliberately avoid the
+   * editor's `canGoNextTask`/`taskHistory`: that history comes from the label-stream endpoint and is
+   * usually only the current task when a task is opened directly via ?task=, so it can't give us the
+   * next item in the visible list.
+   * @private
+   */
+  getNextTaskInList = () => {
+    const list = this.datamanager?.store?.taskStore?.list;
+
+    if (!Array.isArray(list) || list.length < 2) return null;
+
+    const idx = list.findIndex((t) => String(t.id) === String(this.task?.id));
+
+    return idx >= 0 ? list[idx + 1] ?? null : null;
+  };
+
+  /**
+   * Switch to the next task in the left list and keep the URL in sync (?task=<nextId>). Returns false
+   * when there is no next task, so callers can fall back to reloading the current one.
+   * @private
+   */
+  goToNextTask = async () => {
+    const next = this.getNextTaskInList();
+
+    if (!next) return false;
+
+    // The old "reload the same task after submit" flow implicitly refreshed the submitted task's row
+    // in the left list (e.g. its total_annotations count going 0 -> 1). Now that we navigate away
+    // instead, capture the submitted task id and refresh that row separately below.
+    const submittedId = this.task?.id;
+    const appStore = this.datamanager?.store;
+
+    // Navigate exactly like a manual click on the next row. The wrapper's own `this.loadTask()` must
+    // NOT be used here: it fires `LSF.selectTask` twice for the same task — once from the `taskSelected`
+    // listener (`dm-sdk.startLabeling`) with the *previous* task's still-selected annotation id, which
+    // races with our own call and paints the old task's regions onto the new image. `startLabeling`
+    // -> `setTask` instead clears the URL annotation/region and awaits a single, URL-resolved load.
+    if (appStore?.startLabeling) {
+      appStore.startLabeling(next);
+    } else {
+      await this.loadTask(next.id);
+      History.navigate({ task: next.id, annotation: null, interaction: null, region: null }, true);
+    }
+
+    if (isDefined(submittedId) && submittedId !== next.id) {
+      // select:false keeps the editor on the next task; this only re-fetches and updates the
+      // submitted task's list item so its columns (total_annotations, etc.) reflect the new annotation.
+      const taskStore = this.datamanager?.store?.taskStore;
+
+      if (taskStore) Promise.resolve(taskStore.loadTask(submittedId, { select: false })).catch(() => {});
+    }
+
+    return true;
+  };
+
   onNextTask = async (nextTaskId, nextAnnotationId) => {
     await this.saveDraft();
     await this.loadTask(nextTaskId, nextAnnotationId, true);
@@ -1371,7 +1441,7 @@ export class LSFWrapper {
     await this.saveDraft();
     await this.loadTask(prevTaskId, prevAnnotationId, true);
   };
-  async submitCurrentAnnotation(eventName, submit, includeId = false, loadNext = true) {
+  async submitCurrentAnnotation(eventName, submit, includeId = false, loadNext = true, goToNext = false) {
     const { taskID, currentAnnotation } = this;
     const unique_id = this.task.unique_lock_id;
     const serializedAnnotation = this.prepareData(currentAnnotation, { includeId });
@@ -1411,10 +1481,16 @@ export class LSFWrapper {
       return result;
     }
 
-    if (!loadNext || this.datamanager.isExplorer) {
-      await this.loadTask(taskID, currentAnnotation.pk, true);
-    } else {
-      await this.loadTask();
+    // Submit succeeded: prefer switching to the next task in the left list (and syncing the URL);
+    // otherwise fall back to the default reload behavior.
+    const movedToNext = goToNext && (await this.goToNextTask());
+
+    if (!movedToNext) {
+      if (!loadNext || this.datamanager.isExplorer) {
+        await this.loadTask(taskID, currentAnnotation.pk, true);
+      } else {
+        await this.loadTask();
+      }
     }
 
     return result;

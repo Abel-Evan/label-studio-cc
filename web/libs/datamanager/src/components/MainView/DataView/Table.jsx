@@ -13,6 +13,7 @@ import {
 } from "@humansignal/core/lib/utils/feature-flags";
 import * as CellViews from "../../CellViews";
 import { Icon } from "../../Common/Icon/Icon";
+import { Pagination } from "../../Common/Pagination/Pagination";
 import { Spinner } from "../../Common/Spinner";
 import { Table } from "../../Common/Table/Table";
 import { GridView } from "../GridView/GridView";
@@ -124,6 +125,19 @@ function DataViewInner({
       return !hasNextPage || rowExists;
     },
     [dataStore.hasNextPage],
+  );
+
+  // Simple jump-to-page for the labeling side list. The store's `fetch({ pageNumber })`
+  // sets `page` directly and reloads that single page. We guard against the two-way
+  // binding with <Pagination>: when `page` changes because of scroll (page++), the new
+  // value flows back into onPageLoad and would otherwise re-trigger a fetch.
+  const handlePageJump = useCallback(
+    async (pageNumber) => {
+      if (!pageNumber || pageNumber === dataStore.page) return;
+
+      await dataStore.fetch({ pageNumber });
+    },
+    [dataStore],
   );
 
   const agreementFeatureFlagsActive =
@@ -484,7 +498,22 @@ function DataViewInner({
       className={cn("data-view-dm").mix("dm-content").toClassName()}
       style={{ pointerEvents: isSavingView ? "none" : "auto" }}
     >
-      {renderContent(content)}
+      {isLabeling && (
+        <div className={cn("data-view-dm").elem("pager").toClassName()}>
+          <Pagination
+            size="small"
+            page={dataStore.page || 1}
+            pageSize={dataStore.pageSize}
+            totalPages={dataStore.totalPages}
+            totalItems={total}
+            allowRewind={false}
+            showPageSize={false}
+            showTitle={false}
+            onPageLoad={handlePageJump}
+          />
+        </div>
+      )}
+      <div className={cn("data-view-dm").elem("body").toClassName()}>{renderContent(content)}</div>
     </div>
   );
 }
