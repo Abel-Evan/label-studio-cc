@@ -5,10 +5,18 @@ import { RegionEditor } from "./RegionEditor";
 import "./RegionDetails.prefix.css";
 import { JsonViewer, Typography } from "@humansignal/ui";
 
+// `mainValue` is normally an array, but some results can carry a plain string/number (or null).
+// `(x ?? [])` only guards null/undefined, so a non-array crashes `.map`/`.join`. Normalize first.
+const toValueArray = (value: unknown): any[] => (Array.isArray(value) ? value : value == null ? [] : [value]);
+// A taxonomy entry is normally a path array (e.g. ["a", "b"]) but can be a plain value.
+const joinPath = (v: unknown): string => (Array.isArray(v) ? v.join("/") : String(v));
+
 const TextResult: FC<{ mainValue: string[] }> = observer(({ mainValue }) => {
+  const values = toValueArray(mainValue);
+
   return (
     <div className="flex flex-col items-start gap-tighter">
-      {(mainValue ?? []).map((value: string, i: number) => (
+      {values.map((value: string, i: number) => (
         <mark
           key={`${value}-${i}`}
           className="bg-primary-background px-tighter py-tightest rounded-sm text-neutral-content"
@@ -26,7 +34,7 @@ const ChoicesResult: FC<{ mainValue: string[] }> = observer(({ mainValue }) => {
   return (
     <mark className="bg-primary-background px-tighter py-tightest rounded-sm">
       <Typography as="span" size="small" className="text-neutral-content">
-        {(mainValue ?? []).join(", ")}
+        {toValueArray(mainValue).join(", ")}
       </Typography>
     </mark>
   );
@@ -90,11 +98,13 @@ export const ResultItem: FC<{ result: any }> = observer(({ result }) => {
       );
     }
     if (type === "taxonomy") {
+      const taxonomyValue = toValueArray(mainValue).map(joinPath);
+
       return (
         <div className={cn("region-meta").elem("result").toClassName()}>
           <Typography size="small">Taxonomy: </Typography>
           <div className={cn("region-meta").elem("value").toClassName()}>
-            <ChoicesResult mainValue={(mainValue ?? []).map((v: string[]) => v.join("/"))} />
+            <ChoicesResult mainValue={taxonomyValue} />
           </div>
         </div>
       );

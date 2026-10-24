@@ -169,6 +169,38 @@
     min-width: 50px;
   }
 
+  &__number {
+    flex: none;
+    margin-left: 6px;
+    font-weight: 600;
+    color: var(--color-neutral-content);
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__delete {
+    flex: none;
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    cursor: pointer;
+    align-items: center;
+    margin-left: 4px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    justify-content: center;
+    color: var(--color-negative-content, #e53535);
+
+    & svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    &:hover {
+      background: var(--color-negative-surface, rgb(229 53 53 / 12%));
+    }
+  }
+
   &__ocr {
     flex: 1 1 auto;
     min-width: 50px;

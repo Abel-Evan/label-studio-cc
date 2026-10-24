@@ -28,6 +28,7 @@ bun run build
 必须在**装有 Django 的环境**里执行（在容器内、用 `poetry` 环境）：
 
 ```bash
+docker exec -it label-studio-anystreaming   /bin/bash
 cd /home/disk/cch/label-studio-cc
 poetry run python label_studio/manage.py collectstatic --noinput
 ```

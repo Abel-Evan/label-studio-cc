@@ -1,5 +1,6 @@
 import { inject, observer } from "mobx-react";
 import { types } from "mobx-state-tree";
+import { useCallback, useEffect, useRef } from "react";
 
 import InfoModal from "../../components/Infomodal/Infomodal";
 import { guidGenerator } from "../../core/Helpers";
@@ -15,6 +16,7 @@ import PerItemMixin from "../../mixins/PerItem";
 import { FF_LSDV_4583, isFF } from "../../utils/feature-flags";
 import { cn } from "../../utils/bem";
 import { safeNumber, positiveNumber } from "../../utils/number";
+import { selectFirstEmptyNumberRegion, selectNextEmptyNumberRegion } from "../../utils/perRegionNumber";
 
 /**
  * The Number tag supports numeric classification. Use to classify tasks using numbers.
@@ -222,9 +224,91 @@ const HtxNumber = inject("store")(
     const disabled = item.isReadOnly();
     const numberClassName = cn("number").toClassName();
 
+    // --- Jersey-number workflow (per-region Number): auto-select the first empty-number region
+    // on load, then walk forward to the next empty one whenever an edit is committed. ---
+    const inputRef = useRef(null);
+    const didAutoSelectFor = useRef(null);
+    const editedRef = useRef(false);
+
+    const focusInput = useCallback(() => {
+      const el = inputRef.current;
+
+      if (!el) return;
+      el.focus();
+      try {
+        const len = el.value?.length ?? 0;
+
+        el.setSelectionRange(len, len);
+      } catch (_e) {
+        /* range inputs throw on setSelectionRange; ignore */
+      }
+    }, []);
+
+    const advanceToNextEmpty = useCallback(() => {
+      const annotation = item.annotation;
+
+      if (!annotation) return;
+      const next = selectNextEmptyNumberRegion(annotation, item.perRegionArea);
+
+      if (next) requestAnimationFrame(focusInput);
+    }, [item, focusInput]);
+
+    // Clear the "edited" flag whenever the highlighted region changes.
+    useEffect(() => {
+      editedRef.current = false;
+    }, [item.perRegionArea]);
+
+    // On a fresh task, select the first region whose number is still empty.
+    useEffect(() => {
+      if (!item.perregion) return;
+      const annotation = item.annotation;
+
+      if (!annotation) return;
+
+      const annId = annotation.pk ?? annotation.id;
+
+      if (didAutoSelectFor.current === annId) return;
+
+      const regions = annotation.regionStore?.regions ?? [];
+
+      if (!regions.length) return; // wait until the task's regions are present
+
+      didAutoSelectFor.current = annId;
+      if (annotation.highlightedNode) return; // respect an explicit selection (e.g. deep link)
+
+      const target = selectFirstEmptyNumberRegion(annotation);
+
+      if (target) requestAnimationFrame(focusInput);
+    }, [item, item.annotation, item.annotation?.regionStore?.regions?.length, focusInput]);
+
+    const handleChange = useCallback(
+      (e) => {
+        editedRef.current = true;
+        item.onChange?.(e);
+      },
+      [item],
+    );
+
+    const handleBlur = useCallback(() => {
+      if (!item.perregion || !editedRef.current) return;
+      editedRef.current = false;
+      advanceToNextEmpty();
+    }, [item, advanceToNextEmpty]);
+
+    const handleKeyDown = useCallback(
+      (e) => {
+        if (!item.perregion || e.key !== "Enter") return;
+        e.preventDefault();
+        editedRef.current = false;
+        advanceToNextEmpty();
+      },
+      [item, advanceToNextEmpty],
+    );
+
     return (
       <div className={numberClassName} style={visibleStyle} ref={item.elementRef}>
         <input
+          ref={inputRef}
           disabled={disabled}
           style={sliderStyle}
           type={item.slider ? "range" : "number"}
@@ -233,7 +317,9 @@ const HtxNumber = inject("store")(
           step={item.step ?? 1}
           min={isDefined(item.min) ? Number(item.min) : undefined}
           max={isDefined(item.max) ? Number(item.max) : undefined}
-          onChange={disabled ? undefined : item.onChange}
+          onChange={disabled ? undefined : handleChange}
+          onBlur={disabled ? undefined : handleBlur}
+          onKeyDown={disabled ? undefined : handleKeyDown}
         />
         {item.slider && <output style={{ marginLeft: "5px" }}>{item.number ?? item.defaultvalue ?? ""}</output>}
         {store.settings.enableTooltips && store.settings.enableHotkeys && item.hotkey && (

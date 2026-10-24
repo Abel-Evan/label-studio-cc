@@ -110,10 +110,12 @@ export const AreaMixinBase = types
 
       const extract = (r, strict) => {
         if (!r) return "";
-        // in strict mode (explicit showAttributes list) the user asked for this control
-        // by name, so don't skip textarea-typed results or the texting duplicate
-        if (!strict && (r === label || r === self.texting)) return "";
-        if (r.from_name?.isLabeling || (!strict && r.type === "textarea")) return "";
+        // skip the labeling result (rendered as `head`) and genuine free-text results
+        // (rendered separately as `text`). Gate on the CONTROL type, not the result type:
+        // a Number whose value is stored under `value.text` has result type "textarea" but
+        // its control is "number", so it must still show; only a TextArea control is free text.
+        if (!strict && r === label) return "";
+        if (r.from_name?.isLabeling || (!strict && r.from_name?.type === "textarea")) return "";
         // prefer the control's own value key; fall back to `value.text` so results stored
         // by a TextArea (value.text) still render when the control type later changed
         let value = r.mainValue;
@@ -137,14 +139,13 @@ export const AreaMixinBase = types
             ? String(mapChoice(value))
             : "";
       };
-      console.log('showAttributes', showAttributes, wanted)
+
       if (showAttributes !== "none") {
         if (wanted) {
           // strict positional format: keep empty slots for controls without a value
           wanted.forEach((name) =>
             values.push(extract(self.results.find((r) => r.from_name?.name === name), true)),
           );
-          console.log("values", values)
         } else {
           self.results.forEach((r) => {
             const str = extract(r);

@@ -95,8 +95,13 @@ const LabelOnBbox = ({
 
   if (!showLabels) return null;
 
+  // Labels without a click handler (rect/ellipse/polygon/mask/keypoint regions) must not
+  // capture pointer events, otherwise a label overlapping a neighbouring box swallows the
+  // mousemove and blocks that region's hover tooltip. Making the group non-listening lets
+  // the mouse pass through to the underlying region. Interactive labels (video/ocr) keep
+  // listening as before.
   return (
-    <Group strokeScaleEnabled={false} x={x} y={y} rotation={rotation}>
+    <Group strokeScaleEnabled={false} x={x} y={y} rotation={rotation} listening={!!onClickLabel}>
       {!!score && (
         <Label
           y={-height * scale}
