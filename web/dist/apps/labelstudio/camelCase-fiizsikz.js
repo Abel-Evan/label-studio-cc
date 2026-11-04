@@ -1,0 +1,2 @@
+import{ar as e,ir as t,or as n}from"./main-Bmi6m-Cb.js";function r(e){return e.charAt(0).toUpperCase()+e.slice(1).toLowerCase()}function i(t){let n=e(t);if(n.length===0)return``;let[i,...a]=n;return`${i.toLowerCase()}${a.map(e=>r(e)).join(``)}`}function a(e){return i(t(n(e)))}export{r as n,a as t};
+//# sourceMappingURL=camelCase-fiizsikz.js.map

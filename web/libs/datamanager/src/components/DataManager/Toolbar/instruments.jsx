@@ -7,6 +7,7 @@ import { Interface } from "../../Common/Interface";
 import { ExportButton, ImportButton } from "../../Common/SDKButtons";
 import { Tooltip } from "@humansignal/ui";
 import { ActionsButton } from "./ActionsButton";
+import { AutoSubmitButton } from "./AutoSubmitButton";
 import { GridSelectAll } from "./GridSelectAll";
 import { DensityToggle } from "./DensityToggle";
 import { GridWidthButton } from "./GridWidthButton";
@@ -95,6 +96,9 @@ export const instruments = {
   },
   refresh: ({ size }) => {
     return <RefreshButton size={size} />;
+  },
+  "auto-submit": ({ size }) => {
+    return <AutoSubmitButton size={size} />;
   },
   "loading-possum": () => {
     return <LoadingPossum />;

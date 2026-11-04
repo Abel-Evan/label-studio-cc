@@ -26,6 +26,8 @@ import { FF_DEV_1442, FF_LSDV_4930, isFF } from "../../utils/feature-flags";
 import { InteractiveActionsBar } from "../../ml-interactive/InteractiveActionsBar";
 import { Pagination } from "../../common/Pagination/Pagination";
 import { Image } from "./Image";
+import { CameraMappingDrawer } from "./CameraMappingDrawer";
+import { findRegionAtPoint, ImageRegionContextMenu } from "./RegionCustomMenu";
 
 Konva.showWarnings = false;
 
@@ -549,6 +551,8 @@ export default observer(
     state = {
       imgStyle: {},
       pointer: [0, 0],
+      regionMenu: null,
+      cameraMapping: null,
     };
 
     imageRef = createRef();
@@ -567,6 +571,75 @@ export default observer(
       if (typeof props.item.smoothingEnabled === "boolean")
         props.store.settings.setSmoothing(props.item.smoothingEnabled);
     }
+
+    /**
+     * Custom right-click menu (fork feature, purely additive):
+     * inside any annotation region -> show our menu instead of the native one;
+     * anywhere else -> leave the default browser behavior untouched.
+     */
+    // A right-click must never toggle region selection. Konva synthesizes its internal
+    // `pointerclick` (which drives Region._selectArea's select/unselect toggle) directly
+    // from the `pointerup`/`mouseup` it handles on the stage content, regardless of button.
+    // We stop those right-button events at the document capture phase — before they reach
+    // the stage — so the toggle never runs, and then apply the selection we actually want
+    // ourselves in handleContextMenu. (Right-drag is unused, so swallowing it is safe.)
+    blockRightClickOnCanvas = (e) => {
+      if (e.button !== 2) return;
+      const container = this.props.item.stageRef?.container();
+
+      if (container?.contains(e.target)) e.stopPropagation();
+    };
+
+    handleContextMenu = (e) => {
+      const { item } = this.props;
+      const region = findRegionAtPoint(item, e.clientX, e.clientY);
+
+      if (!region) {
+        if (this.state.regionMenu) this.setState({ regionMenu: null });
+        return;
+      }
+
+      e.preventDefault();
+      e.stopPropagation();
+      // the native click that would have selected an unselected region was just blocked,
+      // so select it here; an already-selected region is left untouched (no toggle-off)
+      if (!region.selected) item.annotation?.selectArea(region);
+      // anchor element: lets the menu compensate for the scrollIntoView that region
+      // selection triggers on `.lsf-main-content` (see RegionCustomMenu)
+      const anchor = item.stageRef?.container() ?? null;
+
+      this.setState({ regionMenu: { x: e.clientX, y: e.clientY, region, anchor } });
+    };
+
+    closeRegionMenu = () => this.setState({ regionMenu: null });
+
+    handleCameraMapping = (menu) => {
+      const { store } = this.props;
+      const region = menu?.region;
+
+      this.closeRegionMenu();
+      if (!region) return;
+      // labeling page URLs are always /projects/<id>/data/... (see data_manager/urls.py)
+      const projectId = window.location.pathname.match(/\/projects\/(\d+)/)?.[1] ?? null;
+
+      this.setState({
+        cameraMapping: {
+          projectId,
+          // the task currently shown IS the frame image in this fork
+          taskId: store?.task?.id ?? null,
+          region: {
+            id: region.id,
+            labelName: region.labelName ?? null,
+            // [x, y, w, h] in relative (0..1) image coords, when the region exposes it
+            bbox: region.bbox ? [...region.bbox] : null,
+            // left/top/right/bottom in 0..100 percent coords (same space the hit-test uses)
+            bboxCoords: region.bboxCoords ? { ...region.bboxCoords } : null,
+          },
+        },
+      });
+    };
+
+    closeCameraMapping = () => this.setState({ cameraMapping: null });
 
     handleOnClick = (e) => {
       const { item } = this.props;
@@ -994,6 +1067,12 @@ export default observer(
       const { item } = this.props;
 
       window.addEventListener("resize", this.onResize);
+      // fork: block Konva's synthetic pointerclick for right-button so a right-click on a
+      // region never toggles selection. Listening on document (capture) is deliberate:
+      // the stage container element can be replaced after mount, silently killing any
+      // container-bound listener, whereas document always receives every event.
+      document.addEventListener("pointerup", this.blockRightClickOnCanvas, true);
+      document.addEventListener("mouseup", this.blockRightClickOnCanvas, true);
       this.attachObserver(item.containerRef);
       this.updateReadyStatus();
 
@@ -1018,6 +1097,8 @@ export default observer(
 
     componentWillUnmount() {
       this.detachObserver();
+      document.removeEventListener("pointerup", this.blockRightClickOnCanvas, true);
+      document.removeEventListener("mouseup", this.blockRightClickOnCanvas, true);
       window.removeEventListener("resize", this.onResize);
       window.removeEventListener("mousemove", this.handleGlobalMouseMove);
       window.removeEventListener("mouseup", this.handleGlobalMouseUp);
@@ -1122,6 +1203,7 @@ export default observer(
             }}
             className={containerClassName}
             style={containerStyle}
+            onContextMenu={this.handleContextMenu}
           >
             <div
               ref={(node) => {
@@ -1190,6 +1272,18 @@ export default observer(
             ) : null}
             {imageIsLoaded && ff.isSegmentAnythingEditorEnabled() && <InteractiveOverlayHost objectTag={item} />}
           </div>
+
+          {this.state.regionMenu ? (
+            <ImageRegionContextMenu
+              menu={this.state.regionMenu}
+              onClose={this.closeRegionMenu}
+              actions={[{ label: "机位映射", onClick: this.handleCameraMapping }]}
+            />
+          ) : null}
+
+          {this.state.cameraMapping ? (
+            <CameraMappingDrawer data={this.state.cameraMapping} onClose={this.closeCameraMapping} />
+          ) : null}
 
           {imageIsLoaded && ff.isSegmentAnythingEditorEnabled() && <InteractiveActionsBar objectTag={item} />}
 

@@ -92,7 +92,7 @@ export function labelingEditorLoadFailedMessage() {
 }
 
 const DEFAULT_TOOLBAR =
-  "grid-select-all actions columns filters ordering label-button loading-possum error-box | refresh import-button export-button density-toggle grid-size view-toggle";
+  "grid-select-all actions columns filters ordering label-button loading-possum error-box | auto-submit refresh import-button export-button density-toggle grid-size view-toggle";
 
 const prepareInstruments = (instruments) => {
   const result = Object.entries(instruments).map(([name, builder]) => [name, builder({ inject, observer })]);

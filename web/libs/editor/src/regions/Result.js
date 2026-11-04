@@ -399,6 +399,16 @@ const Result = types
 
       if (isDefined(value[valueType])) {
         Object.assign(data.value, { [valueType]: value[valueType] });
+
+        // Backward-compat for legacy backend pipelines: Number results are also written in the
+        // old TextArea shape (`text: ["<n>"]`) next to `number`, mirroring the read-side fallback
+        // in Number.needsUpdate / perRegionNumber helpers. Always overwrite `text` so an edited
+        // number never ships a stale legacy value.
+        if (valueType === "number") {
+          const numeric = Array.isArray(value.number) ? value.number : [value.number];
+
+          data.value.text = numeric.map((v) => String(v));
+        }
       } else if (isDefined(value.text)) {
         // Legacy per-region values kept under `value.text` by a previous TextArea control
         // (e.g. a Number whose result still has type "textarea"): `data.value` only carries the

@@ -1,3 +1,9 @@
+# 本地服务启动
+
+  ```bash
+  make run-dev
+  ```
+
 # 前端代码更新部署流程（修改 web 源码后）
 
 > 适用场景：修改了 `web/` 下的前端源码，需要重新构建并让浏览器访问到最新页面。
@@ -28,6 +34,7 @@ bun run build
 必须在**装有 Django 的环境**里执行（在容器内、用 `poetry` 环境）：
 
 ```bash
+docker exec -it label-studio-anystreaming   /bin/bash
 cd /home/disk/cch/label-studio-cc
 poetry run python label_studio/manage.py collectstatic --noinput
 ```

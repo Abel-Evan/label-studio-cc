@@ -1,0 +1,2 @@
+const e={FFT_SAMPLES:512,MEL_BANDS:64,WINDOWING_FUNCTION:`blackman`,COLOR_SCHEME:`viridis`,MIN_DB:-80,MAX_DB:-10},t=2e3,n=60,r=!0,i=128,a=128,o=140,s=.5,c=1,l=5,u=3,d=60,f=100,p=2,m=5e4,h=1e7;export{o as a,p as c,c as d,e as f,f as g,t as h,a as i,u as l,d as m,s as n,r as o,m as p,i as r,n as s,h as t,l as u};
+//# sourceMappingURL=constants-BU4SQ67R.js.map
